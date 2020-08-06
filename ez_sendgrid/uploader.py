@@ -36,38 +36,36 @@ def processor(inventory_data: list, api_key: str, template_prefix=None) -> None:
 
     for template in inventory_data:
         template_name = f'{template_prefix}{template["name"]}'
+        logger.info(f'Start to update template=`{template_name}`')
 
-        try:
-            data = {
-                'subject': template['subject'],
-                'template_id': template['template_id'],
-                'active': template.get('active', 1),
-                'plain_content': template.get('plain_content', '<%body%>'),
-                'html_content': template_resolver(template['html_template']),
-            }
+        data = {
+            'subject': template['subject'],
+            'template_id': template['template_id'],
+            'active': template.get('active', 1),
+            'plain_content': template.get('plain_content', '<%body%>'),
+            'html_content': template_resolver(template['html_template']),
+        }
 
-            if not template.get('template_id'):
-                r = sg.client.templates.post(request_body={'name': template_name,
-                                                           'generation': template.get('generation', 'dynamic')})
-                template_id = process_response(r)['id']
-                logger.warning(f'Added template=`{template_name}` id={template_id}, add to inventory before next update')
-                template.update({'template_id': template_id})
-                data.update({'template_id': template_id})
+        if not template.get('template_id'):
+            r = sg.client.templates.post(request_body={'name': template_name,
+                                                       'generation': template.get('generation', 'dynamic')})
+            template_id = process_response(r)['id']
+            logger.warning(f'Added template=`{template_name}` id={template_id}, add to inventory before next update')
+            template.update({'template_id': template_id})
+            data.update({'template_id': template_id})
 
-            if not template.get('version_id'):
-                logger.debug(data)
-                data.update({'name': datetime.datetime.now().isoformat()})
-                r = sg.client.templates._(template['template_id']).versions.post(request_body=data)
-                version_id = process_response(r)['id']
-                logging.info(f'Added version id={version_id} template=`{template_name}`')
-                template.update({'version_id': version_id})
-            else:
-                logger.debug(pprint.pformat(data))
-                r = sg.client.templates._(template['template_id']).versions._(template['version_id']).patch(request_body=data)
-                version_id = process_response(r)['id']
-                logging.info(f'Updated version id=`{version_id}` template=`{template_name}`')
-        except Exception:
-            logger.exception(f'Unable to update template=`{template_name}`')
+        if not template.get('version_id'):
+            logger.debug(data)
+            data.update({'name': datetime.datetime.now().isoformat()})
+            r = sg.client.templates._(template['template_id']).versions.post(request_body=data)
+            version_id = process_response(r)['id']
+            logging.info(f'Added version id={version_id} template=`{template_name}`')
+            template.update({'version_id': version_id})
+        else:
+            logger.debug(pprint.pformat(data))
+            r = sg.client.templates._(template['template_id']).versions._(template['version_id']).patch(request_body=data)
+            version_id = process_response(r)['id']
+            logging.info(f'Updated version id=`{version_id}` template=`{template_name}`')
 
 
 def inventory_map(inventory_data: list) -> dict:
